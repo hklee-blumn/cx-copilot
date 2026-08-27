@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  phone         String
+  createdAt     DateTime       @default(now())
+  orders        Order[]
+  conversations Conversation[]
+}
+
+model Order {
+  id             String          @id @default(cuid())
+  customerId     String
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  description    String
+  amountCents    Int
+  purchasedAt    DateTime        @default(now())
+  status         String          @default("completed")
+  refundDecisions RefundDecision[]
+}
+
+model Conversation {
+  id              String           @id @default(cuid())
+  customerId      String
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  status          String           @default("ai_active")
+  escalateReason  String?
+  assignedAgentId String?
+  assignedAgent   Agent?           @relation(fields: [assignedAgentId], references: [id])
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  messages        Message[]
+  refundDecisions RefundDecision[]
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  sender         String
+  body           String
+  createdAt      DateTime     @default(now())
+}
+
+model RefundDecision {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  orderId        String?
+  order          Order?       @relation(fields: [orderId], references: [id])
+  amountCents    Int
+  decision       String
+  reasoning      String
+  confidence     Float
+  decidedBy      String
+  createdAt      DateTime     @default(now())
+}
+
+model KbArticle {
+  id    String @id @default(cuid())
+  title String
+  slug  String @unique
+  body  String
+  tags  String
+}
+
+model Agent {
+  id            String         @id @default(cuid())
+  name          String
+  email         String         @unique
+  conversations Conversation[]
+}
