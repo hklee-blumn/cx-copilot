@@ -39,6 +39,18 @@ DATABASE_URL="file:./dev.db"
 - `/dashboard` — sign in (Clerk) to see escalated conversations, take one
   over, and reply as a human agent.
 
+## Making database schema changes in production
+
+The production database (Neon Postgres, connected via Vercel) is shared
+with local development. When you change `prisma/schema.prisma`, run
+`npx prisma migrate dev` locally (it applies against the same database
+Vercel uses) *before* pushing — the Vercel build does **not** run
+migrations itself. Running `prisma migrate deploy` inside Vercel's build
+step was tried and removed: it timed out trying to acquire Prisma's
+migration lock against the serverless Postgres connection from within the
+short-lived build sandbox. Applying migrations from a stable local (or CI)
+connection avoids that.
+
 ## Refund decision logic
 
 Every refund request gets a structured decision from Claude (approve /
