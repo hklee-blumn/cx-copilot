@@ -1,12 +1,20 @@
-import type { RefundAiDecision } from "./schemas";
+import type { AgentTurn, RefundAiDecision } from "./schemas";
 
 export const MIN_CONFIDENCE = 0.6;
 export const HUMAN_REVIEW_LIMIT_CENTS = 5000;
+export const YELLOW_CONFIDENCE_THRESHOLD = 0.75;
 
 export type FinalRefundDecision = {
   decision: "approved" | "rejected" | "escalated";
   reasoning: string;
   confidence: number;
+};
+
+export type Severity = "green" | "yellow" | "orange" | "red";
+
+export type SeverityResult = {
+  severity: Severity;
+  status: "ai_active" | "escalated";
 };
 
 /**
@@ -47,4 +55,44 @@ export function applyRefundThresholds(
   }
 
   return { decision: "rejected", reasoning, confidence };
+}
+
+/**
+ * Same "AI proposes, code disposes" philosophy as applyRefundThresholds:
+ * the model reports raw signals (concernLevel, customerRequestedHuman,
+ * confidence, escalate), this function makes the final, auditable call
+ * on the conversation's severity color and status. Red always wins over
+ * orange — a refund needing approval doesn't matter if the customer is
+ * also demanding a human right now.
+ */
+export function applySeverityRules(params: {
+  turn: AgentTurn;
+  finalRefundDecision: FinalRefundDecision | null;
+  repeatedCustomerMessage: boolean;
+}): SeverityResult {
+  const { turn, finalRefundDecision, repeatedCustomerMessage } = params;
+
+  const isRed =
+    turn.customerRequestedHuman ||
+    turn.concernLevel === "human_needed" ||
+    turn.escalate;
+
+  if (isRed) {
+    return { severity: "red", status: "escalated" };
+  }
+
+  if (finalRefundDecision?.decision === "escalated") {
+    return { severity: "orange", status: "escalated" };
+  }
+
+  const isYellow =
+    turn.concernLevel === "watch" ||
+    turn.confidence < YELLOW_CONFIDENCE_THRESHOLD ||
+    repeatedCustomerMessage;
+
+  if (isYellow) {
+    return { severity: "yellow", status: "ai_active" };
+  }
+
+  return { severity: "green", status: "ai_active" };
 }

@@ -76,6 +76,21 @@ export default function ConversationThread({
     }
   }
 
+  async function resolve() {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/conversations/${conversationId}/resolve`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to resolve");
+      await load();
+    } catch {
+      setError("Couldn't mark this conversation resolved. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function sendReply() {
     if (!draft.trim()) return;
     setBusy(true);
@@ -181,6 +196,15 @@ export default function ConversationThread({
           <p className="mt-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Lifetime spend: ${(lifetimeSpentCents / 100).toFixed(2)}
           </p>
+          {conversation.status !== "resolved" && (
+            <button
+              onClick={resolve}
+              disabled={busy}
+              className="mt-3 w-full rounded-full border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:text-zinc-300"
+            >
+              Mark Resolved
+            </button>
+          )}
         </div>
 
         {conversation.escalateReason && (

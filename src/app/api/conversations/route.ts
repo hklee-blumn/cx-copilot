@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { listQueueConversations } from "@/lib/services/conversations";
+import { listBoardConversations } from "@/lib/services/conversations";
 import { prisma } from "@/lib/db";
 
 export async function GET() {
-  const conversations = await listQueueConversations();
+  const conversations = await listBoardConversations();
 
   const withSpend = await Promise.all(
     conversations.map(async (c) => {

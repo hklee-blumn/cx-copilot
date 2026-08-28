@@ -1,0 +1,4 @@
+export const SIMULATION_CAP = 20;
+export const TICK_INTERVAL_MS = 5000;
+export const TICK_SPAWN_PROBABILITY = 0.15;
+export const SIMULATED_AUTO_RESOLVE_MINUTES = 3;

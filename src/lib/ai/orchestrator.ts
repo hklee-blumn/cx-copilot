@@ -14,7 +14,11 @@ import {
   buildRefundDecisionPrompt,
   summarizeConversation,
 } from "./prompts";
-import { applyRefundThresholds } from "./thresholds";
+import {
+  applyRefundThresholds,
+  applySeverityRules,
+  type FinalRefundDecision,
+} from "./thresholds";
 
 function toClaudeMessages(
   messages: { sender: string; body: string }[]
@@ -30,6 +34,24 @@ function toClaudeMessages(
     }
   }
   return merged;
+}
+
+function normalizeForComparison(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function isRepeatedCustomerMessage(
+  currentText: string,
+  priorMessages: { sender: string; body: string }[]
+): boolean {
+  const current = normalizeForComparison(currentText);
+  if (current.length < 8) return false;
+  return priorMessages
+    .filter((m) => m.sender === "customer")
+    .some((m) => {
+      const prior = normalizeForComparison(m.body);
+      return prior === current || prior.includes(current) || current.includes(prior);
+    });
 }
 
 function getToolInput(message: Message, toolName: string): unknown {
@@ -80,9 +102,14 @@ export async function runAiTurn(conversationId: string, customerText: string) {
     data: { conversationId, sender: "ai", body: turn.reply },
   });
 
-  let escalated = turn.escalate;
-  let escalateReason = turn.escalateReason ?? undefined;
+  const repeatedCustomerMessage = isRepeatedCustomerMessage(
+    customerText,
+    conversation.messages.slice(0, -1)
+  );
+
   let refundDecisionRecord = null;
+  let finalRefundDecision: FinalRefundDecision | null = null;
+  let refundEscalateReason: string | undefined;
 
   if (turn.intent === "refund_request" && turn.refundRequest) {
     const { amountCents, description } = turn.refundRequest;
@@ -111,6 +138,7 @@ export async function runAiTurn(conversationId: string, customerText: string) {
     );
 
     const final = applyRefundThresholds(aiDecision);
+    finalRefundDecision = final;
 
     refundDecisionRecord = await prisma.refundDecision.create({
       data: {
@@ -129,18 +157,39 @@ export async function runAiTurn(conversationId: string, customerText: string) {
     });
 
     if (final.decision === "escalated") {
-      escalated = true;
-      escalateReason = `Refund request for $${(amountCents / 100).toFixed(
+      refundEscalateReason = `Refund request for $${(amountCents / 100).toFixed(
         2
       )}: ${final.reasoning}`;
     }
   }
 
+  const { severity, status } = applySeverityRules({
+    turn,
+    finalRefundDecision,
+    repeatedCustomerMessage,
+  });
+
+  let escalateReason: string | undefined;
+  if (status === "escalated") {
+    if (severity === "red") {
+      escalateReason =
+        turn.escalateReason ??
+        (turn.customerRequestedHuman
+          ? "Customer explicitly asked to speak with a human agent."
+          : turn.concernLevel === "human_needed"
+            ? "AI flagged this conversation as needing a human right now."
+            : "Escalated by the AI agent.");
+    } else {
+      escalateReason = refundEscalateReason;
+    }
+  }
+
   const updatedConversation = await prisma.conversation.update({
     where: { id: conversationId },
-    data: escalated
-      ? { status: "escalated", escalateReason }
-      : { status: "ai_active" },
+    data:
+      status === "escalated"
+        ? { status, severity, escalateReason }
+        : { status, severity },
   });
 
   return { aiMessage, conversation: updatedConversation, refundDecisionRecord };

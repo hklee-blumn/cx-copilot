@@ -120,6 +120,7 @@ async function main() {
     data: {
       customerId: ben.id,
       status: "escalated",
+      severity: "orange",
       escalateReason: "Refund request for $349.00: exceeds the $50.00 auto-decision limit and requires human approval.",
     },
   });

@@ -13,6 +13,7 @@ model Customer {
   name          String
   email         String         @unique
   phone         String
+  isSimulated   Boolean        @default(false)
   createdAt     DateTime       @default(now())
   orders        Order[]
   conversations Conversation[]
@@ -34,6 +35,8 @@ model Conversation {
   customerId      String
   customer        Customer         @relation(fields: [customerId], references: [id])
   status          String           @default("ai_active")
+  severity        String           @default("green")
+  isSimulated     Boolean          @default(false)
   escalateReason  String?
   assignedAgentId String?
   assignedAgent   Agent?           @relation(fields: [assignedAgentId], references: [id])
@@ -41,6 +44,9 @@ model Conversation {
   updatedAt       DateTime         @updatedAt
   messages        Message[]
   refundDecisions RefundDecision[]
+
+  @@index([status, severity, updatedAt])
+  @@index([isSimulated, status])
 }
 
 model Message {

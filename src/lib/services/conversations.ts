@@ -12,15 +12,28 @@ export async function getOrCreateActiveConversation(customerId: string) {
   });
 }
 
-export async function listQueueConversations() {
-  return prisma.conversation.findMany({
-    where: { status: { in: ["escalated", "human_active"] } },
+const SEVERITY_RANK: Record<string, number> = {
+  red: 0,
+  orange: 1,
+  yellow: 2,
+  green: 3,
+};
+
+export async function listBoardConversations() {
+  const conversations = await prisma.conversation.findMany({
+    where: { status: { not: "resolved" } },
     include: {
       customer: true,
       assignedAgent: true,
       messages: { orderBy: { createdAt: "desc" }, take: 1 },
     },
     orderBy: { updatedAt: "desc" },
+  });
+
+  return conversations.sort((a, b) => {
+    const rankDiff = SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
+    if (rankDiff !== 0) return rankDiff;
+    return b.updatedAt.getTime() - a.updatedAt.getTime();
   });
 }
 

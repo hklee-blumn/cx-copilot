@@ -12,6 +12,8 @@ export const AgentTurnSchema = z.object({
   escalate: z.boolean(),
   escalateReason: z.string().nullable(),
   confidence: z.number().min(0).max(1),
+  concernLevel: z.enum(["none", "watch", "human_needed"]),
+  customerRequestedHuman: z.boolean(),
 });
 export type AgentTurn = z.infer<typeof AgentTurnSchema>;
 
@@ -60,6 +62,17 @@ export const AGENT_TURN_TOOL = {
         type: "number",
         description: "Your confidence in this reply, from 0 to 1.",
       },
+      concernLevel: {
+        type: "string",
+        enum: ["none", "watch", "human_needed"],
+        description:
+          "Your read on whether a human might need to get involved, separate from escalate.",
+      },
+      customerRequestedHuman: {
+        type: "boolean",
+        description:
+          "True if the customer explicitly asked to speak to a human/agent/person.",
+      },
     },
     required: [
       "reply",
@@ -68,6 +81,8 @@ export const AGENT_TURN_TOOL = {
       "escalate",
       "escalateReason",
       "confidence",
+      "concernLevel",
+      "customerRequestedHuman",
     ],
   },
 };
