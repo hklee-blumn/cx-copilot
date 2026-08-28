@@ -28,6 +28,13 @@ function fakePhone(): string {
   return `555-9${line}`;
 }
 
+export async function hasNoActiveSimulatedConversations() {
+  const count = await prisma.conversation.count({
+    where: { isSimulated: true, status: { not: "resolved" } },
+  });
+  return count === 0;
+}
+
 export async function autoResolveExpiredSimulatedConversations() {
   const cutoff = new Date(Date.now() - SIMULATED_AUTO_RESOLVE_MINUTES * 60 * 1000);
   await prisma.conversation.updateMany({

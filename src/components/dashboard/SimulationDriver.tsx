@@ -5,9 +5,11 @@ import { TICK_INTERVAL_MS } from "@/lib/simulation/config";
 
 export default function SimulationDriver() {
   useEffect(() => {
-    const interval = setInterval(() => {
+    function tick() {
       fetch("/api/simulate/tick", { method: "POST" }).catch(() => {});
-    }, TICK_INTERVAL_MS);
+    }
+    tick(); // fire immediately so a freshly opened dashboard doesn't sit idle
+    const interval = setInterval(tick, TICK_INTERVAL_MS);
     return () => clearInterval(interval);
   }, []);
 

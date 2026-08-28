@@ -3,6 +3,7 @@ import {
   autoResolveExpiredSimulatedConversations,
   trySpawnSimulatedConversation,
   tryAdvanceSimulatedConversation,
+  hasNoActiveSimulatedConversations,
 } from "@/lib/services/simulation";
 import {
   TICK_SPAWN_PROBABILITY,
@@ -12,8 +13,12 @@ import {
 export async function POST() {
   await autoResolveExpiredSimulatedConversations();
 
+  // A freshly opened, empty board shouldn't sit idle waiting on a dice
+  // roll during a live demo — guarantee a spawn when nothing's on screen.
+  const boardEmpty = await hasNoActiveSimulatedConversations();
+
   const spawnResult =
-    Math.random() < TICK_SPAWN_PROBABILITY
+    boardEmpty || Math.random() < TICK_SPAWN_PROBABILITY
       ? await trySpawnSimulatedConversation()
       : { spawned: false as const, reason: "no_roll" as const };
 
