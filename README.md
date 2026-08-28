@@ -10,7 +10,8 @@ reasoning for audit.
 ## Stack
 
 - Next.js (App Router, TypeScript, Tailwind CSS)
-- Prisma + SQLite (local dev) — see `prisma/schema.prisma`
+- Prisma + Postgres (Neon) — see `prisma/schema.prisma`. Local dev points
+  at the same database Vercel uses, no separate local database.
 - Anthropic Claude API (`@anthropic-ai/sdk`) for the AI agent's replies and
   refund decisions, using forced tool-use for structured output
   (`src/lib/ai/`)
@@ -50,6 +51,16 @@ step was tried and removed: it timed out trying to acquire Prisma's
 migration lock against the serverless Postgres connection from within the
 short-lived build sandbox. Applying migrations from a stable local (or CI)
 connection avoids that.
+
+The build script does run `prisma generate` (`package.json`'s `build`
+script) — that's just local codegen from `prisma/schema.prisma`, no
+database connection needed, so it doesn't have the same problem. It's
+required because Vercel can restore a cached `node_modules` from a
+previous deploy when your dependencies haven't changed, which skips
+`npm install`'s usual `prisma generate` postinstall step — without an
+explicit `prisma generate` in the build command, a schema change (like a
+new column) can silently build against a stale, previously-generated
+Prisma Client and fail to type-check.
 
 ## Refund decision logic
 
