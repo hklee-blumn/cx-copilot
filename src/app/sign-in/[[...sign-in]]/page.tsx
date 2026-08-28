@@ -37,10 +37,12 @@ const TREND = [
 export default function SignInPage() {
   return (
     <div id="top" className="flex flex-1 flex-col overflow-x-hidden bg-white dark:bg-zinc-950">
-      <div className="flex w-full items-center bg-blue-950 px-6 py-3">
-        <span className={`${logoFont.className} text-3xl text-white`}>JL</span>
+      <div className="sticky top-0 z-50">
+        <div className="flex w-full items-center bg-blue-950 px-6 py-3">
+          <span className={`${logoFont.className} text-3xl text-white`}>JL</span>
+        </div>
+        <ScrollProgressBar />
       </div>
-      <ScrollProgressBar />
 
       {/* Hero */}
       <section className="relative overflow-hidden bg-gradient-to-b from-sky-50 via-white to-white px-6 py-20 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-950 sm:py-28">

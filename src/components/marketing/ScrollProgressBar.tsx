@@ -24,7 +24,7 @@ export default function ScrollProgressBar() {
   }, []);
 
   return (
-    <div className="sticky top-0 z-50 h-1 w-full bg-blue-100/50 dark:bg-zinc-800">
+    <div className="h-1 w-full bg-blue-100/50 dark:bg-zinc-800">
       <div
         className="h-full bg-gradient-to-r from-blue-600 to-sky-400"
         style={{ width: `${progress * 100}%` }}
