@@ -146,18 +146,44 @@ export default function AnalyticsView() {
 
       {data.volume.length > 0 && (
         <div className="mt-6 rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="mb-4 font-medium text-zinc-900 dark:text-zinc-50">
-            Volume by hour
-          </p>
-          <div className="flex h-32 items-end gap-1">
-            {data.volume.map((v) => (
-              <div
-                key={v.hour}
-                className="flex-1 rounded-t bg-blue-500 transition-[height] duration-700 dark:bg-blue-600"
-                style={{ height: `${(v.count / maxVolume) * 100}%` }}
-                title={`${new Date(v.hour).toLocaleString()}: ${v.count}`}
-              />
-            ))}
+          <div className="mb-4 flex items-baseline justify-between">
+            <p className="font-medium text-zinc-900 dark:text-zinc-50">
+              Volume by hour
+            </p>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              {data.volume.reduce((sum, v) => sum + v.count, 0)} conversations across{" "}
+              {data.volume.length} {data.volume.length === 1 ? "hour" : "hours"}
+            </p>
+          </div>
+          <div className="flex items-end gap-3 overflow-x-auto pb-1">
+            {data.volume.map((v, i) => {
+              const date = new Date(v.hour);
+              const prevDate = i > 0 ? new Date(data.volume[i - 1].hour) : null;
+              const isNewDay =
+                !prevDate || date.toDateString() !== prevDate.toDateString();
+              return (
+                <div key={v.hour} className="flex w-14 shrink-0 flex-col items-center">
+                  {isNewDay && (
+                    <span className="mb-1 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">
+                      {date.toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                    {v.count}
+                  </span>
+                  <div className="mt-1 flex h-28 w-full items-end rounded-t bg-zinc-50 dark:bg-zinc-950">
+                    <div
+                      className="w-full rounded-t bg-blue-500 transition-[height] duration-700 dark:bg-blue-600"
+                      style={{ height: `${Math.max(4, (v.count / maxVolume) * 100)}%` }}
+                      title={`${date.toLocaleString()}: ${v.count} conversation${v.count === 1 ? "" : "s"}`}
+                    />
+                  </div>
+                  <span className="mt-1 border-t border-zinc-200 pt-1 text-[11px] text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+                    {date.toLocaleTimeString(undefined, { hour: "numeric" })}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
