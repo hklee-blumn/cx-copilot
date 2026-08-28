@@ -17,6 +17,7 @@ type RefundDecision = {
 type Conversation = {
   id: string;
   status: string;
+  severity: string;
   isSimulated: boolean;
   escalateReason: string | null;
   assignedAgent: { id: string; name: string } | null;
@@ -24,6 +25,13 @@ type Conversation = {
   messages: Message[];
   refundDecisions: RefundDecision[];
 };
+type Suggestions = { accept: string; clarify: string; decline: string };
+
+const SUGGESTION_META = {
+  accept: { label: "Agree & Accommodate", style: "border-emerald-300 hover:bg-emerald-50 dark:border-emerald-800 dark:hover:bg-emerald-950" },
+  clarify: { label: "Ask for More Info", style: "border-sky-300 hover:bg-sky-50 dark:border-sky-800 dark:hover:bg-sky-950" },
+  decline: { label: "Decline Politely", style: "border-amber-300 hover:bg-amber-50 dark:border-amber-800 dark:hover:bg-amber-950" },
+} as const;
 
 export default function ConversationThread({
   conversationId,
@@ -37,7 +45,10 @@ export default function ConversationThread({
   const [busy, setBusy] = useState(false);
   const [customerTyping, setCustomerTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<Suggestions | null>(null);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const suggestionsForRef = useRef<string | null>(null);
 
   async function load() {
     try {
@@ -63,6 +74,25 @@ export default function ConversationThread({
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [conversation?.messages.length, customerTyping]);
+
+  useEffect(() => {
+    if (!conversation) return;
+    const actionable = conversation.status === "escalated" || conversation.status === "human_active";
+    const relevant = conversation.severity === "red" || conversation.severity === "orange";
+    if (!actionable || !relevant) return;
+
+    const lastMessage = conversation.messages[conversation.messages.length - 1];
+    if (!lastMessage || lastMessage.sender === "agent") return;
+    if (lastMessage.id === suggestionsForRef.current) return;
+
+    suggestionsForRef.current = lastMessage.id;
+    setSuggestionsLoading(true);
+    fetch(`/api/conversations/${conversationId}/suggestions`, { method: "POST" })
+      .then((res) => res.json())
+      .then((data) => setSuggestions(data.suggestions ?? null))
+      .catch(() => {})
+      .finally(() => setSuggestionsLoading(false));
+  }, [conversation, conversationId]);
 
   async function takeOver() {
     setBusy(true);
@@ -94,23 +124,54 @@ export default function ConversationThread({
     }
   }
 
-  async function sendReply() {
-    if (!draft.trim()) return;
+  async function sendReplyText(text: string) {
+    if (!text.trim()) return;
     setBusy(true);
     if (conversation?.isSimulated) setCustomerTyping(true);
-    const body = draft;
-    setDraft("");
     try {
+      if (conversation?.status === "escalated") {
+        const takeoverRes = await fetch(`/api/conversations/${conversationId}/takeover`, {
+          method: "POST",
+        });
+        if (!takeoverRes.ok) throw new Error("Failed to take over");
+      }
       const res = await fetch(`/api/conversations/${conversationId}/reply`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ body }),
+        body: JSON.stringify({ body: text }),
       });
       if (!res.ok) throw new Error("Failed to send reply");
+      setSuggestions(null);
       await load();
     } catch {
       setError("Your reply couldn't be sent. Please try again.");
-      setDraft(body);
+      return false;
+    } finally {
+      setBusy(false);
+      setCustomerTyping(false);
+    }
+    return true;
+  }
+
+  async function sendReply() {
+    const body = draft;
+    setDraft("");
+    const ok = await sendReplyText(body);
+    if (ok === false) setDraft(body);
+  }
+
+  async function approveRefund() {
+    setBusy(true);
+    if (conversation?.isSimulated) setCustomerTyping(true);
+    try {
+      const res = await fetch(`/api/conversations/${conversationId}/approve-refund`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to approve refund");
+      setSuggestions(null);
+      await load();
+    } catch {
+      setError("Couldn't approve the refund. Please try again.");
     } finally {
       setBusy(false);
       setCustomerTyping(false);
@@ -128,6 +189,10 @@ export default function ConversationThread({
 
   const canTakeOver = conversation.status === "escalated";
   const canReply = conversation.status === "human_active";
+  const canSuggest =
+    (canTakeOver || canReply) &&
+    (conversation.severity === "red" || conversation.severity === "orange");
+  const pendingRefund = conversation.refundDecisions.find((r) => r.decision === "escalated");
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-3 p-6">
@@ -167,6 +232,48 @@ export default function ConversationThread({
             )}
           </div>
         </div>
+
+        {canSuggest && pendingRefund && (
+          <button
+            onClick={approveRefund}
+            disabled={busy}
+            className="mt-3 w-full rounded-full bg-emerald-600 px-5 py-3 text-sm font-medium text-white disabled:opacity-40"
+          >
+            ✓ Approve ${(pendingRefund.amountCents / 100).toFixed(2)} Refund &amp; Notify Customer
+          </button>
+        )}
+
+        {canSuggest && (suggestionsLoading || suggestions) && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              Suggested replies — click to send
+            </p>
+            {suggestionsLoading && !suggestions && (
+              <div className="grid gap-2 sm:grid-cols-3">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="h-16 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-900" />
+                ))}
+              </div>
+            )}
+            {suggestions && (
+              <div className="grid gap-2 sm:grid-cols-3">
+                {(["accept", "clarify", "decline"] as const).map((key) => (
+                  <button
+                    key={key}
+                    onClick={() => sendReplyText(suggestions[key])}
+                    disabled={busy}
+                    className={`rounded-xl border bg-white p-3 text-left text-xs text-zinc-700 transition disabled:opacity-40 dark:bg-zinc-950 dark:text-zinc-300 ${SUGGESTION_META[key].style}`}
+                  >
+                    <span className="mb-1 block font-semibold text-zinc-900 dark:text-zinc-50">
+                      {SUGGESTION_META[key].label}
+                    </span>
+                    {suggestions[key]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-3">
           {canTakeOver && (
