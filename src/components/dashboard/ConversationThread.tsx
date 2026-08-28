@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import MessageBubble from "@/components/chat/MessageBubble";
+import MessageBubble from "./MessageBubble";
 
 type Message = { id: string; sender: string; body: string; createdAt: string };
 type Order = { id: string; description: string; amountCents: number; status: string };
@@ -139,7 +139,12 @@ export default function ConversationThread({
         >
           <div className="flex flex-col gap-3">
             {conversation.messages.map((m) => (
-              <MessageBubble key={m.id} sender={m.sender} body={m.body} />
+              <MessageBubble
+                key={m.id}
+                sender={m.sender}
+                body={m.body}
+                customerName={conversation.customer.name}
+              />
             ))}
           </div>
         </div>

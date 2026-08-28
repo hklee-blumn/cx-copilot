@@ -14,7 +14,3 @@ export async function getCustomerSummary(customerId: string) {
     lifetimeSpentCents: spend._sum.amountCents ?? 0,
   };
 }
-
-export async function listCustomers() {
-  return prisma.customer.findMany({ orderBy: { name: "asc" } });
-}

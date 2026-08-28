@@ -1,7 +1,11 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { runAiTurn } from "@/lib/ai/orchestrator";
-import { SIMULATION_CAP, SIMULATED_AUTO_RESOLVE_MINUTES } from "@/lib/simulation/config";
+import { runAiTurn, runSimulatedCustomerTurn } from "@/lib/ai/orchestrator";
+import {
+  SIMULATION_CAP,
+  SIMULATED_AUTO_RESOLVE_MINUTES,
+  MIN_FOLLOWUP_GAP_SECONDS,
+} from "@/lib/simulation/config";
 import {
   FAKE_CUSTOMER_NAMES,
   FAKE_ORDER_TEMPLATES,
@@ -97,4 +101,19 @@ export async function trySpawnSimulatedConversation() {
   await runAiTurn(created.id, scenario.openingMessage);
 
   return { spawned: true as const, conversationId: created.id };
+}
+
+export async function tryAdvanceSimulatedConversation() {
+  const cutoff = new Date(Date.now() - MIN_FOLLOWUP_GAP_SECONDS * 1000);
+  const eligible = await prisma.conversation.findMany({
+    where: { isSimulated: true, status: "ai_active", updatedAt: { lt: cutoff } },
+    select: { id: true },
+  });
+
+  if (eligible.length === 0) return { advanced: false as const, reason: "none_eligible" as const };
+
+  const chosen = pickRandom<{ id: string }>(eligible);
+  await runSimulatedCustomerTurn(chosen.id);
+
+  return { advanced: true as const, conversationId: chosen.id };
 }

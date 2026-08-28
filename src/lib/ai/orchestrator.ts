@@ -19,6 +19,15 @@ import {
   applySeverityRules,
   type FinalRefundDecision,
 } from "./thresholds";
+import {
+  SIMULATED_CUSTOMER_TOOL,
+  SIMULATED_CUSTOMER_TOOL_NAME,
+  SimulatedCustomerTurnSchema,
+  buildSimulatedCustomerSystemPrompt,
+  toCustomerPerspectiveMessages,
+} from "./customerSimulator";
+import { addCustomerMessage, resolveConversation } from "@/lib/services/conversations";
+import { MAX_SIMULATED_MESSAGES } from "@/lib/simulation/config";
 
 function toClaudeMessages(
   messages: { sender: string; body: string }[]
@@ -193,4 +202,52 @@ export async function runAiTurn(conversationId: string, customerText: string) {
   });
 
   return { aiMessage, conversation: updatedConversation, refundDecisionRecord };
+}
+
+/**
+ * Plays the customer's side of a simulated conversation, so demo traffic
+ * reads as a real back-and-forth instead of one message and silence.
+ * Only ever called for isSimulated conversations (see the tick route and
+ * the agent-reply route) — a real customer needs no AI to speak for them.
+ */
+export async function runSimulatedCustomerTurn(conversationId: string) {
+  const conversation = await prisma.conversation.findUniqueOrThrow({
+    where: { id: conversationId },
+    include: { customer: true, messages: { orderBy: { createdAt: "asc" } } },
+  });
+
+  if (conversation.status === "resolved") return;
+
+  if (conversation.messages.length >= MAX_SIMULATED_MESSAGES) {
+    await resolveConversation(conversationId);
+    return;
+  }
+
+  const orders = await prisma.order.findMany({
+    where: { customerId: conversation.customerId },
+  });
+
+  const response = await anthropic.messages.create({
+    model: AI_MODEL,
+    max_tokens: 512,
+    system: buildSimulatedCustomerSystemPrompt(conversation.customer, orders),
+    messages: toCustomerPerspectiveMessages(conversation.messages),
+    tools: [SIMULATED_CUSTOMER_TOOL],
+    tool_choice: { type: "tool", name: SIMULATED_CUSTOMER_TOOL_NAME },
+  });
+
+  const turn = SimulatedCustomerTurnSchema.parse(
+    getToolInput(response, SIMULATED_CUSTOMER_TOOL_NAME)
+  );
+
+  if (turn.conversationOver || !turn.message) {
+    await resolveConversation(conversationId);
+    return;
+  }
+
+  if (conversation.status === "ai_active") {
+    await runAiTurn(conversationId, turn.message);
+  } else {
+    await addCustomerMessage(conversationId, turn.message);
+  }
 }

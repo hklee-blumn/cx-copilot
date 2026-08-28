@@ -1,17 +1,5 @@
 import { prisma } from "@/lib/db";
 
-export async function getOrCreateActiveConversation(customerId: string) {
-  const existing = await prisma.conversation.findFirst({
-    where: { customerId, status: { not: "resolved" } },
-    orderBy: { updatedAt: "desc" },
-  });
-  if (existing) return existing;
-
-  return prisma.conversation.create({
-    data: { customerId, status: "ai_active" },
-  });
-}
-
 const SEVERITY_RANK: Record<string, number> = {
   red: 0,
   orange: 1,
@@ -63,11 +51,11 @@ export async function addAgentReply(conversationId: string, body: string) {
   const message = await prisma.message.create({
     data: { conversationId, sender: "agent", body },
   });
-  await prisma.conversation.update({
+  const conversation = await prisma.conversation.update({
     where: { id: conversationId },
     data: { updatedAt: new Date() },
   });
-  return message;
+  return { message, conversation };
 }
 
 export async function addCustomerMessage(conversationId: string, body: string) {

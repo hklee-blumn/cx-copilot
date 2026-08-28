@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { addAgentReply } from "@/lib/services/conversations";
+import { runSimulatedCustomerTurn } from "@/lib/ai/orchestrator";
 
 export async function POST(
   request: Request,
@@ -11,6 +12,11 @@ export async function POST(
     return NextResponse.json({ error: "body is required" }, { status: 400 });
   }
 
-  const message = await addAgentReply(id, body);
+  const { message, conversation } = await addAgentReply(id, body);
+
+  if (conversation.isSimulated) {
+    await runSimulatedCustomerTurn(id);
+  }
+
   return NextResponse.json({ message });
 }
