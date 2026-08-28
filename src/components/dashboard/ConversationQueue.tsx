@@ -12,24 +12,34 @@ const SEVERITY_ORDER = ["red", "orange", "yellow", "green"] as const;
 
 const SEVERITY_META: Record<
   (typeof SEVERITY_ORDER)[number],
-  { dot: string; label: string }
+  { dot: string; label: string; header: string }
 > = {
-  red: { dot: "bg-red-500", label: "Needs a Human" },
-  orange: { dot: "bg-orange-500", label: "Needs Approval" },
-  yellow: { dot: "bg-yellow-500", label: "Watch List" },
-  green: { dot: "bg-green-500", label: "Routine" },
+  red: {
+    dot: "bg-red-500",
+    label: "Needs a Human",
+    header: "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950",
+  },
+  orange: {
+    dot: "bg-orange-500",
+    label: "Needs Approval",
+    header: "border-orange-200 bg-orange-50 dark:border-orange-900 dark:bg-orange-950",
+  },
+  yellow: {
+    dot: "bg-yellow-500",
+    label: "Watch List",
+    header: "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950",
+  },
+  green: {
+    dot: "bg-green-500",
+    label: "Routine",
+    header: "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950",
+  },
 };
 
 export default function ConversationQueue() {
   const [conversations, setConversations] = useState<QueueConversation[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({
-    red: true,
-    orange: true,
-    yellow: true,
-    green: true,
-  });
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [pulseRed, setPulseRed] = useState(false);
   const seenRedIds = useRef<Set<string> | null>(null);
@@ -69,7 +79,6 @@ export default function ConversationQueue() {
             newAlerts.forEach((a) => {
               setTimeout(() => dismissAlert(a.id), 8000);
             });
-            setExpanded((prev) => ({ ...prev, red: true }));
             setPulseRed(true);
             setTimeout(() => setPulseRed(false), 4000);
           }
@@ -95,7 +104,7 @@ export default function ConversationQueue() {
   }));
 
   return (
-    <div className="mx-auto w-full max-w-3xl p-6">
+    <div className="mx-auto w-full max-w-[1500px] p-6">
       <SimulationDriver />
 
       <div className="pointer-events-none fixed inset-x-0 top-4 z-50 flex flex-col items-center gap-2 px-4">
@@ -125,20 +134,9 @@ export default function ConversationQueue() {
         ))}
       </div>
 
-      <h1 className="mb-2 text-xl font-semibold text-zinc-900 dark:text-zinc-50">
+      <h1 className="mb-4 text-xl font-semibold text-zinc-900 dark:text-zinc-50">
         Live Conversations
       </h1>
-
-      {loaded && (
-        <div className="mb-4 flex items-center gap-4 text-sm text-zinc-600 dark:text-zinc-400">
-          {groups.map(({ severity, items }) => (
-            <span key={severity} className="flex items-center gap-1.5">
-              <span className={`h-2.5 w-2.5 rounded-full ${SEVERITY_META[severity].dot}`} />
-              {items.length}
-            </span>
-          ))}
-        </div>
-      )}
 
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
@@ -147,66 +145,45 @@ export default function ConversationQueue() {
       )}
 
       {!loaded && (
-        <div className="flex flex-col gap-3">
-          {[0, 1, 2].map((i) => (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-24 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900"
+              className="h-64 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900"
             />
           ))}
         </div>
       )}
 
-      {loaded && conversations.length === 0 && (
-        <p className="rounded-2xl border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700">
-          No live conversations right now.
-        </p>
-      )}
-
-      {loaded && conversations.length > 0 && (
-        <div className="flex flex-col gap-3">
+      {loaded && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {groups.map(({ severity, items }) => {
             const meta = SEVERITY_META[severity];
-            const isOpen = expanded[severity];
             return (
               <div
                 key={severity}
-                className={`overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 ${
+                className={`flex max-h-[75vh] flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 ${
                   severity === "red" && pulseRed ? "animate-urgent-pulse" : ""
                 }`}
               >
-                <button
-                  onClick={() =>
-                    setExpanded((prev) => ({ ...prev, [severity]: !prev[severity] }))
-                  }
-                  className="flex w-full items-center justify-between bg-zinc-50 px-4 py-3 text-left dark:bg-zinc-900"
+                <div
+                  className={`flex shrink-0 items-center gap-2 border-b px-3 py-3 text-sm font-medium text-zinc-800 dark:text-zinc-200 ${meta.header}`}
                 >
-                  <span className="flex items-center gap-2 text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                    <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} />
-                    {meta.label}
-                    <span className="text-zinc-400 dark:text-zinc-500">
-                      ({items.length})
-                    </span>
+                  <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} />
+                  {meta.label}
+                  <span className="text-zinc-400 dark:text-zinc-500">
+                    ({items.length})
                   </span>
-                  <span
-                    className={`text-zinc-400 transition-transform dark:text-zinc-500 ${
-                      isOpen ? "rotate-180" : ""
-                    }`}
-                  >
-                    ▾
-                  </span>
-                </button>
-                {isOpen && (
-                  <div className="flex flex-col gap-3 p-3">
-                    {items.length === 0 ? (
-                      <p className="px-2 py-1 text-sm text-zinc-400 dark:text-zinc-500">
-                        Nothing here right now.
-                      </p>
-                    ) : (
-                      items.map((c) => <CustomerCard key={c.id} c={c} />)
-                    )}
-                  </div>
-                )}
+                </div>
+                <div className="flex-1 space-y-3 overflow-y-auto bg-white p-3 dark:bg-zinc-900">
+                  {items.length === 0 ? (
+                    <p className="px-1 py-1 text-sm text-zinc-400 dark:text-zinc-500">
+                      Nothing here right now.
+                    </p>
+                  ) : (
+                    items.map((c) => <CustomerCard key={c.id} c={c} compact />)
+                  )}
+                </div>
               </div>
             );
           })}
