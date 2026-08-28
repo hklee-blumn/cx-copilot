@@ -18,9 +18,10 @@ function randomAmountCents([min, max]: [number, number]): number {
 }
 
 function fakeEmail(name: string): string {
-  const slug = name.toLowerCase().replace(/[^a-z]+/g, ".");
-  const unique = `${Date.now()}${Math.floor(Math.random() * 10000)}`;
-  return `${slug}.${unique}@demo.cx-copilot.test`;
+  const [first, ...rest] = name.toLowerCase().split(/\s+/);
+  const last = rest.at(-1)?.replace(/[^a-z]/g, "") ?? "";
+  const unique = Math.floor(Math.random() * 1000);
+  return `${first[0]}${last}${unique}@cxdemo.io`;
 }
 
 function fakePhone(): string {

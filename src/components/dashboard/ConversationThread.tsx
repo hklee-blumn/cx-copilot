@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import MessageBubble from "./MessageBubble";
 
 type Message = { id: string; sender: string; body: string; createdAt: string };
@@ -130,6 +131,12 @@ export default function ConversationThread({
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-3 p-6">
+      <Link
+        href="/dashboard"
+        className="flex w-fit items-center gap-1 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+      >
+        ← Back to dashboard
+      </Link>
       {error && (
         <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300">
           {error}
@@ -207,7 +214,7 @@ export default function ConversationThread({
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {conversation.customer.phone}
           </p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <p className="break-all text-sm text-zinc-500 dark:text-zinc-400">
             {conversation.customer.email}
           </p>
           <p className="mt-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">

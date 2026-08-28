@@ -46,7 +46,7 @@ export default function CustomerCard({ c }: { c: QueueConversation }) {
             <p className="font-medium text-zinc-900 dark:text-zinc-50">
               {c.customer.name}
             </p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            <p className="break-all text-xs text-zinc-500 dark:text-zinc-400">
               {c.customer.phone} · {c.customer.email}
             </p>
           </div>
