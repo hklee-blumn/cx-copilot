@@ -25,6 +25,38 @@ export async function listBoardConversations() {
   });
 }
 
+export async function listResolvedConversations(search?: string) {
+  return prisma.conversation.findMany({
+    where: {
+      status: "resolved",
+      ...(search
+        ? { customer: { name: { contains: search, mode: "insensitive" } } }
+        : {}),
+    },
+    include: {
+      customer: true,
+      assignedAgent: true,
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 50,
+  });
+}
+
+export async function attachLifetimeSpend<T extends { customerId: string }>(
+  conversations: T[]
+) {
+  return Promise.all(
+    conversations.map(async (c) => {
+      const spend = await prisma.order.aggregate({
+        where: { customerId: c.customerId },
+        _sum: { amountCents: true },
+      });
+      return { ...c, lifetimeSpentCents: spend._sum.amountCents ?? 0 };
+    })
+  );
+}
+
 export async function getConversationDetail(conversationId: string) {
   return prisma.conversation.findUniqueOrThrow({
     where: { id: conversationId },

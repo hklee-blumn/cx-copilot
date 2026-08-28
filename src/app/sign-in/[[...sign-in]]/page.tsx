@@ -5,6 +5,7 @@ import AnimatedStat from "@/components/marketing/AnimatedStat";
 import ScrollProgressBar from "@/components/marketing/ScrollProgressBar";
 import ParallaxLayer from "@/components/marketing/ParallaxLayer";
 import BeforeAfterMorph from "@/components/marketing/BeforeAfterMorph";
+import RoiCalculator from "@/components/marketing/RoiCalculator";
 
 const logoFont = Alex_Brush({ weight: "400", subsets: ["latin"] });
 
@@ -147,6 +148,21 @@ export default function SignInPage() {
             </Reveal>
           </div>
         </div>
+      </section>
+
+      {/* ROI calculator */}
+      <section className="bg-white px-6 py-24 dark:bg-zinc-950">
+        <Reveal>
+          <h2 className="text-center text-3xl font-semibold text-zinc-900 dark:text-zinc-50">
+            What would this save your team?
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-center text-zinc-600 dark:text-zinc-400">
+            Drag the sliders to match your contact center.
+          </p>
+        </Reveal>
+        <Reveal delayMs={150} className="mt-14">
+          <RoiCalculator />
+        </Reveal>
       </section>
 
       {/* Trend */}

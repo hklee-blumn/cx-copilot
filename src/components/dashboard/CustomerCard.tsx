@@ -24,6 +24,7 @@ const STATUS_LABEL: Record<string, string> = {
   ai_active: "AI handling",
   human_active: "In progress",
   escalated: "Needs attention",
+  resolved: "Resolved",
 };
 
 export default function CustomerCard({ c }: { c: QueueConversation }) {
