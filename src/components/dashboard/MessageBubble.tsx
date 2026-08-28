@@ -1,6 +1,7 @@
 type Props = {
   sender: string;
   body: string;
+  createdAt?: string;
   customerName?: string;
 };
 
@@ -12,7 +13,14 @@ const SENDER_STYLES: Record<string, string> = {
     "self-start bg-zinc-100 text-zinc-900 border border-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700",
 };
 
-export default function MessageBubble({ sender, body, customerName }: Props) {
+function formatTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+export default function MessageBubble({ sender, body, createdAt, customerName }: Props) {
   const label =
     sender === "agent"
       ? "You"
@@ -26,7 +34,12 @@ export default function MessageBubble({ sender, body, customerName }: Props) {
         SENDER_STYLES[sender] ?? "self-start bg-zinc-100"
       }`}
     >
-      <span className="text-xs font-medium opacity-70">{label}</span>
+      <span className="flex items-baseline gap-2 text-xs font-medium opacity-70">
+        {label}
+        {createdAt && (
+          <span className="font-normal opacity-80">{formatTime(createdAt)}</span>
+        )}
+      </span>
       <span className="whitespace-pre-wrap text-sm">{body}</span>
     </div>
   );

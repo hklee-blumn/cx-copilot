@@ -16,6 +16,7 @@ type RefundDecision = {
 type Conversation = {
   id: string;
   status: string;
+  isSimulated: boolean;
   escalateReason: string | null;
   assignedAgent: { id: string; name: string } | null;
   customer: { name: string; email: string; phone: string };
@@ -33,6 +34,7 @@ export default function ConversationThread({
   const [lifetimeSpentCents, setLifetimeSpentCents] = useState(0);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [customerTyping, setCustomerTyping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +61,7 @@ export default function ConversationThread({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [conversation?.messages.length]);
+  }, [conversation?.messages.length, customerTyping]);
 
   async function takeOver() {
     setBusy(true);
@@ -94,6 +96,7 @@ export default function ConversationThread({
   async function sendReply() {
     if (!draft.trim()) return;
     setBusy(true);
+    if (conversation?.isSimulated) setCustomerTyping(true);
     const body = draft;
     setDraft("");
     try {
@@ -109,6 +112,7 @@ export default function ConversationThread({
       setDraft(body);
     } finally {
       setBusy(false);
+      setCustomerTyping(false);
     }
   }
 
@@ -143,9 +147,17 @@ export default function ConversationThread({
                 key={m.id}
                 sender={m.sender}
                 body={m.body}
+                createdAt={m.createdAt}
                 customerName={conversation.customer.name}
               />
             ))}
+            {customerTyping && (
+              <div className="flex max-w-[75%] items-center gap-1 self-start rounded-2xl border border-zinc-200 bg-zinc-100 px-4 py-3 dark:border-zinc-700 dark:bg-zinc-800">
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.3s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:-0.15s]" />
+                <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400" />
+              </div>
+            )}
           </div>
         </div>
 
