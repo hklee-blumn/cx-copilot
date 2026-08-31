@@ -9,6 +9,7 @@ type QueueConversation = {
   escalateReason: string | null;
   updatedAt: string;
   lifetimeSpentCents: number;
+  isVip: boolean;
   customer: { name: string; phone: string; email: string; company: string };
   assignedAgent: { name: string } | null;
   messages: { body: string; sender: string }[];
@@ -62,6 +63,11 @@ export default function CustomerCard({
           <div className="min-w-0">
             <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
               {c.customer.name}
+              {c.isVip && (
+                <span className="ml-1" title="Top 10% spender for this company">
+                  👑
+                </span>
+              )}
             </p>
             <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
               {c.customer.company}

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getVipCustomerIds } from "./customers";
 
 const SEVERITY_RANK: Record<string, number> = {
   red: 0,
@@ -46,13 +47,18 @@ export async function listResolvedConversations(search?: string) {
 export async function attachLifetimeSpend<T extends { customerId: string }>(
   conversations: T[]
 ) {
+  const vipIds = await getVipCustomerIds();
   return Promise.all(
     conversations.map(async (c) => {
       const spend = await prisma.order.aggregate({
         where: { customerId: c.customerId },
         _sum: { amountCents: true },
       });
-      return { ...c, lifetimeSpentCents: spend._sum.amountCents ?? 0 };
+      return {
+        ...c,
+        lifetimeSpentCents: spend._sum.amountCents ?? 0,
+        isVip: vipIds.has(c.customerId),
+      };
     })
   );
 }

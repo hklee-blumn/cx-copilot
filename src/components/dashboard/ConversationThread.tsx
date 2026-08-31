@@ -42,6 +42,7 @@ export default function ConversationThread({
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [lifetimeSpentCents, setLifetimeSpentCents] = useState(0);
+  const [isVip, setIsVip] = useState(false);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [customerTyping, setCustomerTyping] = useState(false);
@@ -59,6 +60,7 @@ export default function ConversationThread({
       setConversation(data.conversation);
       setOrders(data.orders);
       setLifetimeSpentCents(data.lifetimeSpentCents);
+      setIsVip(Boolean(data.isVip));
       setError(null);
     } catch {
       setError("Couldn't reach the server. Retrying...");
@@ -325,6 +327,11 @@ export default function ConversationThread({
             <div className="min-w-0">
               <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
                 {conversation.customer.name}
+                {isVip && (
+                  <span className="ml-1" title="Top 10% spender for this company">
+                    👑
+                  </span>
+                )}
               </p>
               <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
                 {conversation.customer.company}
