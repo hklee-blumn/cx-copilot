@@ -5,8 +5,11 @@ export const AgentTurnSchema = z.object({
   intent: z.enum(["question", "refund_request", "complaint", "other"]),
   refundRequest: z
     .object({
-      amountCents: z.number().int().positive(),
+      // 0 is valid when orderId is null — the AI has no real order to
+      // quote an amount from yet.
+      amountCents: z.number().int().nonnegative(),
       description: z.string(),
+      orderId: z.string().nullable(),
     })
     .nullable(),
   escalate: z.boolean(),
@@ -47,10 +50,19 @@ export const AGENT_TURN_TOOL = {
       refundRequest: {
         type: ["object", "null"],
         properties: {
-          amountCents: { type: "integer" },
+          amountCents: {
+            type: "integer",
+            description:
+              "Your best-guess refund amount in cents. If orderId is null, you may not have a real figure yet — 0 is fine in that case.",
+          },
           description: { type: "string" },
+          orderId: {
+            type: ["string", "null"],
+            description:
+              "The id of the order from the order history above that this request clearly matches, based on the item/description. Set to null if you cannot confidently match this to a specific order on the customer's account — in that case, do not treat this as an actionable refund request yet; ask the customer for their order number instead (see instructions above).",
+          },
         },
-        required: ["amountCents", "description"],
+        required: ["amountCents", "description", "orderId"],
       },
       escalate: {
         type: "boolean",

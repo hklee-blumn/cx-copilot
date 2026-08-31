@@ -122,54 +122,97 @@ export async function runAiTurn(conversationId: string, customerText: string) {
   let refundEscalateReason: string | undefined;
 
   if (turn.intent === "refund_request" && turn.refundRequest) {
-    const { amountCents, description } = turn.refundRequest;
+    const { orderId, description } = turn.refundRequest;
+    const matchedOrder = orderId ? orders.find((o) => o.id === orderId) ?? null : null;
 
-    const decisionResponse = await anthropic.messages.create({
-      model: AI_MODEL,
-      max_tokens: 512,
-      messages: [
-        {
-          role: "user",
-          content: buildRefundDecisionPrompt(
-            conversation.customer,
-            orders,
-            amountCents,
-            description,
-            summarizeConversation(conversation.messages)
-          ),
+    // No confident match to a real order on this account — per the system
+    // prompt, turn.reply should already be asking the customer for their
+    // order number instead of asserting a claim. Code never creates a
+    // refund decision (or escalates one) for an unverified order; this is
+    // the deterministic half of "AI proposes, code disposes" for fraud
+    // prevention, mirroring how refund thresholds are never trusted from
+    // the model alone.
+    if (matchedOrder && matchedOrder.status === "refunded") {
+      // Double-dip guard: an order already marked refunded is rejected
+      // outright in code, with no AI call and no escalation.
+      const final: FinalRefundDecision = {
+        decision: "rejected",
+        reasoning: `This order (${matchedOrder.description}) has already been refunded.`,
+        confidence: 1,
+      };
+      finalRefundDecision = final;
+
+      refundDecisionRecord = await prisma.refundDecision.create({
+        data: {
+          conversationId,
+          orderId: matchedOrder.id,
+          amountCents: matchedOrder.amountCents,
+          decision: "rejected",
+          reasoning: final.reasoning,
+          confidence: final.confidence,
+          decidedBy: "ai",
         },
-      ],
-      tools: [REFUND_DECISION_TOOL],
-      tool_choice: { type: "tool", name: REFUND_DECISION_TOOL_NAME },
-    });
+      });
+    } else if (matchedOrder) {
+      const decisionResponse = await anthropic.messages.create({
+        model: AI_MODEL,
+        max_tokens: 512,
+        messages: [
+          {
+            role: "user",
+            content: buildRefundDecisionPrompt(
+              conversation.customer,
+              matchedOrder,
+              description,
+              summarizeConversation(conversation.messages)
+            ),
+          },
+        ],
+        tools: [REFUND_DECISION_TOOL],
+        tool_choice: { type: "tool", name: REFUND_DECISION_TOOL_NAME },
+      });
 
-    const aiDecision = RefundDecisionSchema.parse(
-      getToolInput(decisionResponse, REFUND_DECISION_TOOL_NAME)
-    );
+      const aiDecision = RefundDecisionSchema.parse(
+        getToolInput(decisionResponse, REFUND_DECISION_TOOL_NAME)
+      );
+      // The real order amount always wins over whatever figure the model
+      // states — never trust an AI-reported dollar amount for a money
+      // decision when the actual value is on record.
+      const final = applyRefundThresholds({
+        ...aiDecision,
+        amountCents: matchedOrder.amountCents,
+      });
+      finalRefundDecision = final;
 
-    const final = applyRefundThresholds(aiDecision);
-    finalRefundDecision = final;
+      refundDecisionRecord = await prisma.refundDecision.create({
+        data: {
+          conversationId,
+          orderId: matchedOrder.id,
+          amountCents: matchedOrder.amountCents,
+          decision:
+            final.decision === "approved"
+              ? "approved"
+              : final.decision === "rejected"
+                ? "rejected"
+                : "escalated",
+          reasoning: final.reasoning,
+          confidence: final.confidence,
+          decidedBy: "ai",
+        },
+      });
 
-    refundDecisionRecord = await prisma.refundDecision.create({
-      data: {
-        conversationId,
-        amountCents,
-        decision:
-          final.decision === "approved"
-            ? "approved"
-            : final.decision === "rejected"
-              ? "rejected"
-              : "escalated",
-        reasoning: final.reasoning,
-        confidence: final.confidence,
-        decidedBy: "ai",
-      },
-    });
+      if (final.decision === "approved") {
+        await prisma.order.update({
+          where: { id: matchedOrder.id },
+          data: { status: "refunded" },
+        });
+      }
 
-    if (final.decision === "escalated") {
-      refundEscalateReason = `Refund request for $${(amountCents / 100).toFixed(
-        2
-      )}: ${final.reasoning}`;
+      if (final.decision === "escalated") {
+        refundEscalateReason = `Refund request for $${(
+          matchedOrder.amountCents / 100
+        ).toFixed(2)}: ${final.reasoning}`;
+      }
     }
   }
 

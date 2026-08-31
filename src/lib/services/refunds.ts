@@ -38,6 +38,13 @@ export async function approveRefundDirectly(
     },
   });
 
+  if (pending.orderId) {
+    await prisma.order.update({
+      where: { id: pending.orderId },
+      data: { status: "refunded" },
+    });
+  }
+
   const message = await prisma.message.create({
     data: {
       conversationId,

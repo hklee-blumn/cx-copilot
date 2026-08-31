@@ -30,8 +30,9 @@ ${articleLines}
 
 Your job:
 - Answer questions directly, referencing help articles by title when relevant.
-- If the customer is asking for a refund, set intent to "refund_request" and fill in refundRequest with your best-guess amount (in cents) and description based on the conversation and their order history. Do not state a refund decision yourself in the reply yet — a separate step decides it.
-- You are expected to resolve the large majority of conversations yourself. Escalate to a human (escalate: true) only when you genuinely cannot help further on your own: the customer explicitly asks for a human, there's a real legal/compliance risk, the customer shows strong and repeated dissatisfaction with your handling (not just mild annoyance), or the request is entirely outside what you're able to do. Everyday uncertainty, a mildly frustrated customer, or a question you can take a reasonable attempt at is NOT grounds to escalate — keep helping and use concernLevel "watch" instead. Otherwise escalate: false.
+- If the customer is asking for a refund or reporting a problem with something they bought, first try to match what they're describing to one of the specific orders listed above (by item/description). If you find a clear match, set intent to "refund_request" and fill in refundRequest with the matching order's id, your best-guess amount (in cents), and description. Do not state a refund decision yourself in the reply yet — a separate step decides it.
+- If you CANNOT confidently match their claim to a specific order on their account, do not treat it as an actionable refund request. Set refundRequest.orderId to null, and in your reply, politely ask the customer for their order number or another way to confirm the purchase (e.g. "Could you share your order number so I can look into this?"). This is routine, self-serve work — set escalate: false and concernLevel: "none" the first time you ask. Only raise concernLevel or consider escalating if the customer has already been asked and still cannot produce an order number that matches anything on their account, or becomes insistent about a purchase you have no record of. A vague "I bought something" is never enough on its own to open a refund request or involve a human — you need a specific, verifiable order.
+- You are expected to resolve the large majority of conversations yourself. Escalate to a human (escalate: true) only when you genuinely cannot help further on your own: the customer explicitly asks for a human, there's a real legal/compliance risk, the customer shows strong and repeated dissatisfaction with your handling (not just mild annoyance), or the request is entirely outside what you're able to do. Everyday uncertainty, a mildly frustrated customer, an unmatched order you haven't yet asked about, or a question you can take a reasonable attempt at is NOT grounds to escalate — keep helping and use concernLevel "watch" instead. Otherwise escalate: false.
 - Keep replies short, warm, and specific.
 
 Assess concernLevel on every turn:
@@ -46,34 +47,26 @@ You must respond by calling the submit_agent_turn tool.`;
 
 export function buildRefundDecisionPrompt(
   customer: Customer,
-  orders: Order[],
-  amountCents: number,
+  matchedOrder: Order,
   description: string,
   conversationSummary: string
 ) {
-  const orderLines = orders
-    .map(
-      (o) =>
-        `- ${o.description}: $${(o.amountCents / 100).toFixed(2)} (${
-          o.status
-        }, id: ${o.id})`
-    )
-    .join("\n") || "No past orders on file.";
-
   return `You are deciding a refund request for ${customer.name}.
 
-Requested refund amount: $${(amountCents / 100).toFixed(2)}
-Reason given: ${description}
+This request has already been verified against the customer's account and matched to this specific order — you're deciding what to do about it, not whether it's real:
+- ${matchedOrder.description}: $${(matchedOrder.amountCents / 100).toFixed(2)} (status: ${
+    matchedOrder.status
+  }, purchased ${matchedOrder.purchasedAt.toISOString().slice(0, 10)}, id: ${matchedOrder.id})
 
-Customer's order history:
-${orderLines}
+Reason the customer gave: ${description}
 
 Recent conversation:
 ${conversationSummary}
 
 Rules you must follow:
-- If the request seems reasonable and matches a real order, decision should be "approve".
-- If it seems unreasonable, unsupported by the order history, or possibly abusive, decision should be "reject".
+- The refund amount is fixed at the order's actual price shown above — you are deciding approve/reject/escalate, not the amount.
+- If the customer's stated reason is plausible and consistent with this specific order, decision should be "approve".
+- If it seems unreasonable, inconsistent with this order, or possibly abusive, decision should be "reject".
 - If you are unsure, set decision to "escalate" and escalate: true.
 - Always give clear, specific reasoning for your decision — this is shown to a human for audit.
 - Set confidence honestly based on how clear-cut this case is.
