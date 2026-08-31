@@ -13,6 +13,7 @@ model Customer {
   name          String
   email         String         @unique
   phone         String
+  company       String         @default("Unknown")
   isSimulated   Boolean        @default(false)
   createdAt     DateTime       @default(now())
   orders        Order[]

@@ -13,19 +13,19 @@ async function main() {
 
   const [amara, ben, carla, deshawn, elena] = await Promise.all([
     prisma.customer.create({
-      data: { name: "Amara Okafor", email: "amara@example.com", phone: "555-0101" },
+      data: { name: "Amara Okafor", email: "amara@example.com", phone: "555-0101", company: "Northwind Retail" },
     }),
     prisma.customer.create({
-      data: { name: "Ben Whitfield", email: "ben@example.com", phone: "555-0102" },
+      data: { name: "Ben Whitfield", email: "ben@example.com", phone: "555-0102", company: "Acme Logistics" },
     }),
     prisma.customer.create({
-      data: { name: "Carla Reyes", email: "carla@example.com", phone: "555-0103" },
+      data: { name: "Carla Reyes", email: "carla@example.com", phone: "555-0103", company: "Globex Electronics" },
     }),
     prisma.customer.create({
-      data: { name: "Deshawn Carter", email: "deshawn@example.com", phone: "555-0104" },
+      data: { name: "Deshawn Carter", email: "deshawn@example.com", phone: "555-0104", company: "Initech Software" },
     }),
     prisma.customer.create({
-      data: { name: "Elena Petrova", email: "elena@example.com", phone: "555-0105" },
+      data: { name: "Elena Petrova", email: "elena@example.com", phone: "555-0105", company: "Umbrella Health" },
     }),
   ]);
 

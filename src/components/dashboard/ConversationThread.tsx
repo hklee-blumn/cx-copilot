@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import MessageBubble from "./MessageBubble";
+import { companyBadge } from "@/lib/companies";
 
 type Message = { id: string; sender: string; body: string; createdAt: string };
 type Order = { id: string; description: string; amountCents: number; status: string };
@@ -21,7 +22,7 @@ type Conversation = {
   isSimulated: boolean;
   escalateReason: string | null;
   assignedAgent: { id: string; name: string } | null;
-  customer: { name: string; email: string; phone: string };
+  customer: { name: string; email: string; phone: string; company: string };
   messages: Message[];
   refundDecisions: RefundDecision[];
 };
@@ -315,10 +316,22 @@ export default function ConversationThread({
 
       <aside className="w-72 shrink-0 space-y-4">
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          <p className="font-medium text-zinc-900 dark:text-zinc-50">
-            {conversation.customer.name}
-          </p>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          <div className="flex items-center gap-2">
+            <span
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ${companyBadge(conversation.customer.company).color}`}
+            >
+              {companyBadge(conversation.customer.company).initials}
+            </span>
+            <div className="min-w-0">
+              <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
+                {conversation.customer.name}
+              </p>
+              <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                {conversation.customer.company}
+              </p>
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
             {conversation.customer.phone}
           </p>
           <p className="break-all text-sm text-zinc-500 dark:text-zinc-400">

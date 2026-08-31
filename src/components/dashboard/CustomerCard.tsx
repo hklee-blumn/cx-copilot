@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatRelativeTime } from "@/lib/format";
+import { companyBadge } from "@/lib/companies";
 
 type QueueConversation = {
   id: string;
@@ -8,7 +9,7 @@ type QueueConversation = {
   escalateReason: string | null;
   updatedAt: string;
   lifetimeSpentCents: number;
-  customer: { name: string; phone: string; email: string };
+  customer: { name: string; phone: string; email: string; company: string };
   assignedAgent: { name: string } | null;
   messages: { body: string; sender: string }[];
 };
@@ -35,6 +36,7 @@ export default function CustomerCard({
   compact?: boolean;
 }) {
   const lastMessage = c.messages[0];
+  const badge = companyBadge(c.customer.company);
 
   return (
     <Link
@@ -51,15 +53,20 @@ export default function CustomerCard({
             }`}
             title={`Severity: ${c.severity}`}
           />
+          <span
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${badge.color}`}
+            title={c.customer.company}
+          >
+            {badge.initials}
+          </span>
           <div className="min-w-0">
             <p className="truncate font-medium text-zinc-900 dark:text-zinc-50">
               {c.customer.name}
             </p>
-            {compact ? (
-              <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
-                {c.customer.phone}
-              </p>
-            ) : (
+            <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+              {c.customer.company}
+            </p>
+            {!compact && (
               <p className="break-all text-xs text-zinc-500 dark:text-zinc-400">
                 {c.customer.phone} · {c.customer.email}
               </p>

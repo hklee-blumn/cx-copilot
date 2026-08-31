@@ -12,6 +12,7 @@ import {
   SIMULATION_SCENARIOS,
   pickRandom,
 } from "@/lib/simulation/scenarios";
+import { DEMO_COMPANIES } from "@/lib/companies";
 
 function randomAmountCents([min, max]: [number, number]): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -66,11 +67,13 @@ export async function trySpawnSimulatedConversation() {
         if (count >= SIMULATION_CAP) return null;
 
         const name = pickRandom(FAKE_CUSTOMER_NAMES);
+        const company = pickRandom(DEMO_COMPANIES).name;
         const customer = await tx.customer.create({
           data: {
             name,
             email: fakeEmail(name),
             phone: fakePhone(),
+            company,
             isSimulated: true,
           },
         });
