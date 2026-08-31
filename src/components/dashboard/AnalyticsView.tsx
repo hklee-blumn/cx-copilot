@@ -14,6 +14,8 @@ type Analytics = {
   refundSummary: Record<string, number>;
   approvedAmountCents: number;
   volume: { hour: string; count: number }[];
+  fraudFlaggedPhotos: number;
+  fraudPreventedAmountCents: number;
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
@@ -101,6 +103,32 @@ export default function AnalyticsView() {
           }
         />
       </div>
+
+      {data.fraudFlaggedPhotos > 0 && (
+        <div className="mt-6 flex flex-col items-start justify-between gap-3 rounded-2xl border border-red-200 bg-red-50 p-5 sm:flex-row sm:items-center dark:border-red-900 dark:bg-red-950">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl" aria-hidden>
+              🛡️
+            </span>
+            <div>
+              <p className="font-medium text-red-900 dark:text-red-200">
+                Fraud caught by AI photo verification
+              </p>
+              <p className="text-sm text-red-700 dark:text-red-300">
+                {data.fraudFlaggedPhotos} fake evidence photo
+                {data.fraudFlaggedPhotos === 1 ? "" : "s"} flagged before a refund was
+                approved
+              </p>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-red-900 dark:text-red-200">
+            ${(data.fraudPreventedAmountCents / 100).toFixed(2)}
+            <span className="ml-1.5 text-sm font-normal text-red-700 dark:text-red-300">
+              at risk
+            </span>
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 grid gap-6 sm:grid-cols-2">
         <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-900">

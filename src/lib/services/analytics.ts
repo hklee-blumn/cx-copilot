@@ -10,6 +10,8 @@ export async function getDashboardAnalytics() {
     refundGroups,
     resolvedForDuration,
     volumeRows,
+    fraudFlaggedPhotos,
+    fraudFlaggedConversations,
   ] = await Promise.all([
     prisma.conversation.count(),
     prisma.conversation.count({ where: { status: "resolved" } }),
@@ -36,6 +38,11 @@ export async function getDashboardAnalytics() {
       ORDER BY hour ASC
       LIMIT 24
     `,
+    prisma.message.count({ where: { photoLooksFake: true } }),
+    prisma.conversation.findMany({
+      where: { messages: { some: { photoLooksFake: true } } },
+      select: { refundDecisions: { select: { amountCents: true } } },
+    }),
   ]);
 
   const avgResolutionMinutes =
@@ -66,6 +73,11 @@ export async function getDashboardAnalytics() {
     }
   }
 
+  const fraudPreventedAmountCents = fraudFlaggedConversations.reduce(
+    (sum, c) => sum + c.refundDecisions.reduce((s, r) => s + r.amountCents, 0),
+    0
+  );
+
   return {
     total,
     resolvedTotal,
@@ -78,5 +90,7 @@ export async function getDashboardAnalytics() {
     refundSummary,
     approvedAmountCents,
     volume: volumeRows.map((r) => ({ hour: r.hour, count: Number(r.count) })),
+    fraudFlaggedPhotos,
+    fraudPreventedAmountCents,
   };
 }

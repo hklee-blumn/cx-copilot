@@ -191,9 +191,9 @@ export default function ConversationThread({
 
   if (!conversation) {
     return (
-      <div className="mx-auto flex w-full max-w-5xl flex-1 gap-6 p-6">
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 p-6 lg:flex-row">
         <div className="h-96 flex-1 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900" />
-        <div className="h-96 w-72 shrink-0 animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900" />
+        <div className="h-96 w-full animate-pulse rounded-2xl bg-zinc-100 dark:bg-zinc-900 lg:w-72 lg:shrink-0" />
       </div>
     );
   }
@@ -218,7 +218,7 @@ export default function ConversationThread({
           {error}
         </div>
       )}
-      <div className="flex flex-1 gap-6">
+      <div className="flex flex-1 flex-col gap-6 lg:flex-row">
       <div className="flex flex-1 flex-col">
         <div
           ref={scrollRef}
@@ -327,7 +327,7 @@ export default function ConversationThread({
         </div>
       </div>
 
-      <aside className="w-72 shrink-0 space-y-4">
+      <aside className="w-full space-y-4 lg:w-72 lg:shrink-0">
         <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
           <div className="flex items-center gap-2">
             <span
