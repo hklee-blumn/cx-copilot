@@ -3,11 +3,13 @@ import {
   autoResolveExpiredSimulatedConversations,
   trySpawnSimulatedConversation,
   tryAdvanceSimulatedConversation,
+  trySendEvidencePhoto,
   hasNoActiveSimulatedConversations,
 } from "@/lib/services/simulation";
 import {
   TICK_SPAWN_PROBABILITY,
   CUSTOMER_FOLLOWUP_PROBABILITY,
+  PHOTO_ATTACH_PROBABILITY,
 } from "@/lib/simulation/config";
 
 export async function POST() {
@@ -27,5 +29,10 @@ export async function POST() {
       ? await tryAdvanceSimulatedConversation()
       : { advanced: false as const, reason: "no_roll" as const };
 
-  return NextResponse.json({ spawnResult, followupResult });
+  const photoResult =
+    Math.random() < PHOTO_ATTACH_PROBABILITY
+      ? await trySendEvidencePhoto()
+      : { sent: false as const, reason: "no_roll" as const };
+
+  return NextResponse.json({ spawnResult, followupResult, photoResult });
 }

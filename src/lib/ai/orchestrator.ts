@@ -28,6 +28,7 @@ import {
 } from "./customerSimulator";
 import { addCustomerMessage, resolveConversation } from "@/lib/services/conversations";
 import { MAX_SIMULATED_MESSAGES } from "@/lib/simulation/config";
+import { analyzePhoto } from "./photoAnalysis";
 
 function toClaudeMessages(
   messages: { sender: string; body: string }[]
@@ -250,4 +251,67 @@ export async function runSimulatedCustomerTurn(conversationId: string) {
   } else {
     await addCustomerMessage(conversationId, turn.message);
   }
+}
+
+/**
+ * Handles a customer sending a photo as refund evidence. Runs AI vision
+ * analysis on the image and, if it looks fake (stock photo, AI-generated,
+ * etc.), forces the conversation red/escalated so a human reviews it —
+ * same "red wins outright" precedence as applySeverityRules. Deliberately
+ * never approves/rejects a refund itself; the money decision stays inside
+ * applyRefundThresholds via the normal text-based refund flow. The fraud
+ * reasoning is surfaced to the agent via the message record, not stated to
+ * the customer — the AI's reply to them stays neutral.
+ */
+export async function runPhotoTurn(
+  conversationId: string,
+  imageUrl: string,
+  caption: string
+) {
+  const conversation = await prisma.conversation.findUniqueOrThrow({
+    where: { id: conversationId },
+    include: { messages: { orderBy: { createdAt: "asc" } } },
+  });
+
+  const customerMessage = await prisma.message.create({
+    data: { conversationId, sender: "customer", body: caption, imageUrl },
+  });
+
+  const analysis = await analyzePhoto(imageUrl, caption, {
+    customerClaim: summarizeConversation(conversation.messages),
+  });
+
+  await prisma.message.update({
+    where: { id: customerMessage.id },
+    data: {
+      photoLooksFake: analysis.looksFake,
+      photoFakeReason: analysis.fakeReasons.join("; ") || null,
+      photoSupportsRefund: analysis.supportsRefund,
+      photoAnalysisReasoning: analysis.refundReasoning,
+    },
+  });
+
+  const replyBody = analysis.looksFake
+    ? "Thanks for sending that over — I'm looping in a specialist to take a closer look before we move forward."
+    : analysis.supportsRefund
+      ? "Thanks for the photo, that helps confirm what you're describing. I'll factor that in."
+      : "Thanks for sending that over — I'll take a look and follow up if I need anything else.";
+
+  const aiMessage = await prisma.message.create({
+    data: { conversationId, sender: "ai", body: replyBody },
+  });
+
+  let updatedConversation = conversation;
+  if (analysis.looksFake) {
+    const escalateReason = `Photo evidence flagged as potentially fake: ${
+      analysis.fakeReasons.join("; ") || "AI assessed the image as inauthentic."
+    }`;
+    updatedConversation = await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { severity: "red", status: "escalated", escalateReason },
+      include: { messages: { orderBy: { createdAt: "asc" } } },
+    });
+  }
+
+  return { customerMessage, aiMessage, conversation: updatedConversation, analysis };
 }

@@ -51,12 +51,17 @@ model Conversation {
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id])
-  sender         String
-  body           String
-  createdAt      DateTime     @default(now())
+  id                     String       @id @default(cuid())
+  conversationId         String
+  conversation           Conversation @relation(fields: [conversationId], references: [id])
+  sender                 String
+  body                   String
+  imageUrl               String?
+  photoLooksFake         Boolean?
+  photoFakeReason        String?
+  photoSupportsRefund    Boolean?
+  photoAnalysisReasoning String?
+  createdAt              DateTime     @default(now())
 }
 
 model RefundDecision {

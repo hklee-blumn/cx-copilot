@@ -3,6 +3,9 @@ type Props = {
   body: string;
   createdAt?: string;
   customerName?: string;
+  imageUrl?: string | null;
+  photoLooksFake?: boolean | null;
+  photoFakeReason?: string | null;
 };
 
 const SENDER_STYLES: Record<string, string> = {
@@ -20,7 +23,15 @@ function formatTime(iso: string): string {
   });
 }
 
-export default function MessageBubble({ sender, body, createdAt, customerName }: Props) {
+export default function MessageBubble({
+  sender,
+  body,
+  createdAt,
+  customerName,
+  imageUrl,
+  photoLooksFake,
+  photoFakeReason,
+}: Props) {
   const label =
     sender === "agent"
       ? "You"
@@ -41,6 +52,25 @@ export default function MessageBubble({ sender, body, createdAt, customerName }:
         )}
       </span>
       <span className="whitespace-pre-wrap text-sm">{body}</span>
+      {imageUrl && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt="Customer-submitted evidence photo"
+          className="mt-1 max-h-56 w-full max-w-xs rounded-lg border border-black/10 object-cover"
+        />
+      )}
+      {photoLooksFake && (
+        <div className="mt-1 flex max-w-xs items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-200">
+          <span aria-hidden>⚠️</span>
+          <div>
+            <p className="text-xs font-semibold">AI flagged this photo as likely fake</p>
+            {photoFakeReason && (
+              <p className="mt-0.5 text-xs opacity-90">{photoFakeReason}</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

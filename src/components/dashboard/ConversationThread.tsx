@@ -5,7 +5,15 @@ import Link from "next/link";
 import MessageBubble from "./MessageBubble";
 import { companyBadge } from "@/lib/companies";
 
-type Message = { id: string; sender: string; body: string; createdAt: string };
+type Message = {
+  id: string;
+  sender: string;
+  body: string;
+  createdAt: string;
+  imageUrl?: string | null;
+  photoLooksFake?: boolean | null;
+  photoFakeReason?: string | null;
+};
 type Order = { id: string; description: string; amountCents: number; status: string };
 type RefundDecision = {
   id: string;
@@ -224,6 +232,9 @@ export default function ConversationThread({
                 body={m.body}
                 createdAt={m.createdAt}
                 customerName={conversation.customer.name}
+                imageUrl={m.imageUrl}
+                photoLooksFake={m.photoLooksFake}
+                photoFakeReason={m.photoFakeReason}
               />
             ))}
             {customerTyping && (

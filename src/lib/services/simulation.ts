@@ -1,6 +1,6 @@
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { runAiTurn, runSimulatedCustomerTurn } from "@/lib/ai/orchestrator";
+import { runAiTurn, runSimulatedCustomerTurn, runPhotoTurn } from "@/lib/ai/orchestrator";
 import {
   SIMULATION_CAP,
   SIMULATED_AUTO_RESOLVE_MINUTES,
@@ -12,6 +12,7 @@ import {
   SIMULATION_SCENARIOS,
   pickRandom,
 } from "@/lib/simulation/scenarios";
+import { pickEvidencePhoto } from "@/lib/simulation/photos";
 import { DEMO_COMPANIES } from "@/lib/companies";
 
 function randomAmountCents([min, max]: [number, number]): number {
@@ -127,4 +128,26 @@ export async function tryAdvanceSimulatedConversation() {
   await runSimulatedCustomerTurn(chosen.id);
 
   return { advanced: true as const, conversationId: chosen.id };
+}
+
+export async function trySendEvidencePhoto() {
+  const eligible = await prisma.conversation.findMany({
+    where: {
+      isSimulated: true,
+      status: { not: "resolved" },
+      refundDecisions: { some: {} },
+      messages: { none: { imageUrl: { not: null } } },
+    },
+    select: { id: true },
+  });
+
+  if (eligible.length === 0) {
+    return { sent: false as const, reason: "none_eligible" as const };
+  }
+
+  const chosen = pickRandom<{ id: string }>(eligible);
+  const photo = pickEvidencePhoto();
+  await runPhotoTurn(chosen.id, photo.imageUrl, photo.caption);
+
+  return { sent: true as const, conversationId: chosen.id };
 }
